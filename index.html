@@ -457,6 +457,120 @@
             -webkit-touch-callout: none;
         }
 
+        /* 成績記錄樣式 */
+        .high-scores-content {
+            text-align: center;
+            padding: 5vw;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .high-scores-content h2 {
+            color: #776e65;
+            font-size: 6vw;
+            margin-bottom: 3vw;
+        }
+        
+        .score-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2vw 3vw;
+            margin-bottom: 2vw;
+            background: #f9f6f2;
+            border-radius: 1.5vw;
+            border: 2px solid #bbada0;
+        }
+        
+        .score-item.rank-1 {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            border-color: #daa520;
+            box-shadow: 0 2px 10px rgba(218, 165, 32, 0.3);
+        }
+        
+        .score-item.rank-2 {
+            background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+            border-color: #a0a0a0;
+            box-shadow: 0 2px 10px rgba(160, 160, 160, 0.3);
+        }
+        
+        .score-item.rank-3 {
+            background: linear-gradient(135deg, #cd7f32, #deb887);
+            border-color: #b8860b;
+            box-shadow: 0 2px 10px rgba(184, 134, 11, 0.3);
+        }
+        
+        .rank-info {
+            display: flex;
+            align-items: center;
+            gap: 2vw;
+        }
+        
+        .rank-medal {
+            font-size: 4vw;
+            min-width: 6vw;
+        }
+        
+        .rank-number {
+            font-size: 3vw;
+            font-weight: bold;
+            color: #776e65;
+            min-width: 4vw;
+        }
+        
+        .score-details {
+            text-align: right;
+        }
+        
+        .score-value {
+            font-size: 4vw;
+            font-weight: bold;
+            color: #776e65;
+        }
+        
+        .score-date {
+            font-size: 2.5vw;
+            color: #8f7a66;
+            margin-top: 0.5vw;
+        }
+        
+        .no-scores {
+            font-size: 3.5vw;
+            color: #8f7a66;
+            padding: 5vw;
+            text-align: center;
+        }
+        
+        /* 響應式調整 */
+        @media (orientation: landscape) {
+            .high-scores-content h2 {
+                font-size: 4vh;
+            }
+            
+            .rank-medal {
+                font-size: 3vh;
+                min-width: 4vh;
+            }
+            
+            .rank-number {
+                font-size: 2.5vh;
+                min-width: 3vh;
+            }
+            
+            .score-value {
+                font-size: 3vh;
+            }
+            
+            .score-date {
+                font-size: 2vh;
+            }
+            
+            .no-scores {
+                font-size: 2.5vh;
+            }
+        }
+        
         /* 確保遊戲在極小螢幕上仍可用 */
         @media (max-width: 320px) {
             .game-title {
@@ -521,8 +635,18 @@
                 </div>
             </div>
             
+            <!-- 成績記錄弹窗 -->
+            <div id="high-scores-modal" class="game-over-overlay d-none">
+                <div class="high-scores-content">
+                    <h2>🏆 成績記錄</h2>
+                    <div id="high-scores-list"></div>
+                    <button id="close-scores-btn" class="btn btn-primary btn-lg">關閉</button>
+                </div>
+            </div>
+            
             <div class="game-controls">
-                <button id="new-game" class="btn btn-warning btn-lg">新遊戲</button>
+                <button id="new-game" class="btn btn-warning btn-lg" style="margin: 5px;">新遊戲</button>
+                <button id="high-scores-btn" class="btn btn-primary btn-lg" style="margin: 5px;">成績記錄</button>
             </div>
         </div>
     </div>
@@ -537,6 +661,7 @@
                 this.bestScore = parseInt(localStorage.getItem('best2048')) || 0;
                 this.hasWon = false;
                 this.gameWon = false;
+                this.highScores = this.loadHighScores();
                 
                 this.initializeBoard();
                 this.setupEventListeners();
@@ -568,6 +693,8 @@
                 document.getElementById('restart-btn').addEventListener('click', () => this.newGame());
                 document.getElementById('new-game-btn').addEventListener('click', () => this.newGame());
                 document.getElementById('continue-btn').addEventListener('click', () => this.continueGame());
+                document.getElementById('high-scores-btn').addEventListener('click', () => this.showHighScores());
+                document.getElementById('close-scores-btn').addEventListener('click', () => this.hideHighScores());
                 
                 // 防止頁面滾動
                 document.addEventListener('touchmove', (e) => {
@@ -990,6 +1117,9 @@
             }
             
             showGameOver() {
+                // 检查是否需要更新排行榜
+                this.checkAndUpdateHighScores();
+                
                 document.getElementById('final-score').textContent = this.score;
                 document.getElementById('game-over').classList.remove('d-none');
             }
@@ -1041,6 +1171,82 @@
                     return true;
                 }
                 return false;
+            }
+            
+            // 成績記錄相關功能
+            loadHighScores() {
+                const scores = localStorage.getItem('highScores2048');
+                return scores ? JSON.parse(scores) : [];
+            }
+            
+            saveHighScores() {
+                localStorage.setItem('highScores2048', JSON.stringify(this.highScores));
+            }
+            
+            checkAndUpdateHighScores() {
+                if (this.score > 0) {
+                    const newScore = {
+                        score: this.score,
+                        date: new Date().toLocaleString('zh-TW', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }),
+                        timestamp: Date.now()
+                    };
+                    
+                    this.highScores.push(newScore);
+                    this.highScores.sort((a, b) => b.score - a.score);
+                    this.highScores = this.highScores.slice(0, 10); // 只保留前10名
+                    this.saveHighScores();
+                }
+            }
+            
+            showHighScores() {
+                const modal = document.getElementById('high-scores-modal');
+                const scoresList = document.getElementById('high-scores-list');
+                
+                if (this.highScores.length === 0) {
+                    scoresList.innerHTML = '<div class="no-scores">還沒有成績記錄，開始遊戲吧！</div>';
+                } else {
+                    scoresList.innerHTML = this.highScores.map((score, index) => {
+                        const rank = index + 1;
+                        let medal = '';
+                        let rankClass = '';
+                        
+                        if (rank === 1) {
+                            medal = '🥇';
+                            rankClass = 'rank-1';
+                        } else if (rank === 2) {
+                            medal = '🥈';
+                            rankClass = 'rank-2';
+                        } else if (rank === 3) {
+                            medal = '🥉';
+                            rankClass = 'rank-3';
+                        }
+                        
+                        return `
+                            <div class="score-item ${rankClass}">
+                                <div class="rank-info">
+                                    <div class="rank-medal">${medal}</div>
+                                    <div class="rank-number">${rank}</div>
+                                </div>
+                                <div class="score-details">
+                                    <div class="score-value">${score.score.toLocaleString()}</div>
+                                    <div class="score-date">${score.date}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                modal.classList.remove('d-none');
+            }
+            
+            hideHighScores() {
+                document.getElementById('high-scores-modal').classList.add('d-none');
             }
         }
 
